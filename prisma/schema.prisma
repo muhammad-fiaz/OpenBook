@@ -1,0 +1,950 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Organization Model
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  logo      String?
+  brandColor String? @map("brand_color")
+  fontFamily String? @map("font_family")
+  baseCurrency String @default("INR") @map("base_currency")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users              User[]
+  members            OrganizationMember[] // New relation
+  clients            Client[]
+  categories         Category[]
+  invoices           Invoice[]
+  payments           Payment[]
+  transactions       Transaction[]
+  recurringTransactions RecurringTransaction[]
+  deliveryNotes      DeliveryNote[]
+  customFields       CustomField[]
+  invoiceTemplates   InvoiceTemplate[]
+  settings           Setting[]
+  auditLogs          AuditLog[]
+  invitations        Invitation[]
+
+  notifications       Notification[]
+  chatRooms           ChatRoom[]
+  products            Product[]
+  quotes              Quote[]
+  timeEntries         TimeEntry[]
+  projects            Project[]
+  paymentReminders    PaymentReminder[]
+  paymentMethods      OrganizationPaymentMethod[]
+  joinRequests        JoinRequest[]
+  taxes               Tax[]
+  fees                Fee[]
+
+  @@map("organizations")
+}
+
+// User Model
+
+model User {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  email          String   @unique
+  emailVerified  Boolean  @default(false) @map("email_verified")
+  image          String?
+  password       String?
+  country        String?
+  socialMedia    Json?    @map("social_media")
+  role           UserRole @default(MEMBER)
+  organizationId String?  @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  memberships  OrganizationMember[] // New relation
+  sessions     Session[]
+  accounts     Account[]
+  auditLogs    AuditLog[]
+  invitations  Invitation[] @relation("UserInvitations")
+  notifications       Notification[] @relation("NotificationRecipient")
+  sentNotifications   Notification[] @relation("NotificationSender")
+  chatRoomMembers     ChatRoomMember[]
+  chatMessages        ChatMessage[]
+  timeEntries         TimeEntry[]
+  quotes              Quote[] @relation("QuoteCreator")
+  joinRequests        JoinRequest[]
+
+  @@index([organizationId])
+  @@map("users")
+}
+
+model OrganizationMember {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  role           UserRole @default(MEMBER)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("organization_members")
+}
+
+model Invitation {
+  id             String   @id @default(uuid()) @db.Uuid
+  email          String
+  role           UserRole @default(MEMBER)
+  token          String   @unique
+  organizationId String   @map("organization_id") @db.Uuid
+  expiresAt      DateTime @map("expires_at")
+  inviterId      String   @map("inviter_id") @db.Uuid
+  status         String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  inviter      User         @relation("UserInvitations", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([token])
+  @@map("invitations")
+}
+
+model JoinRequest {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  message        String?
+  status         String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@index([userId])
+  @@map("join_requests")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                    String   @id @default(uuid()) @db.Uuid
+  userId                String   @map("user_id") @db.Uuid
+  accountId             String   @map("account_id")
+  providerId            String   @map("provider_id")
+  accessToken           String?  @map("access_token")
+  refreshToken          String?  @map("refresh_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?
+  idToken               String?  @map("id_token")
+  password              String?
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("verifications")
+}
+
+// Client Model
+
+model Client {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  email          String?
+  website        String?
+  notes          String?
+  phone          String?
+  company        String?
+  address        String?
+  city           String?
+  state          String?
+  country        String?
+  postalCode     String?  @map("postal_code")
+  taxId          String?  @map("tax_id")
+  currency       String   @default("INR")
+  paymentTerms   String?  @map("payment_terms")
+  shippingAddress String? @map("shipping_address")
+  shippingCity    String? @map("shipping_city")
+  shippingState   String? @map("shipping_state")
+  shippingCountry String? @map("shipping_country")
+  shippingPostalCode String? @map("shipping_postal_code")
+  
+  // Extended Details
+  isBusiness     Boolean  @default(true) @map("is_business")
+  workEmail      String?  @map("work_email")
+  personalEmail  String?  @map("personal_email")
+  workAddress    String?  @map("work_address")
+  personalAddress String? @map("personal_address")
+  socialMedia    Json?    @map("social_media")
+
+  metadata       Json?
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices         Invoice[]
+  clientMetadata   ClientMetadata[]
+  customFieldValues CustomFieldValue[]
+  deliveryNotes    DeliveryNote[]
+  quotes           Quote[]
+  projects         Project[]
+
+  @@index([organizationId])
+  @@map("clients")
+}
+
+model Tax {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  rate           Decimal  @db.Decimal(10, 4) // Percentage
+  description    String?
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("taxes")
+}
+
+model Fee {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  amount         Decimal  @db.Decimal(20, 4) // Fixed amount
+  currency       String   @default("INR")
+  description    String?
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("fees")
+}
+
+model ClientMetadata {
+  id       String @id @default(uuid()) @db.Uuid
+  clientId String @map("client_id") @db.Uuid
+  key      String
+  value    String
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, key])
+  @@map("client_metadata")
+}
+
+// Category Model
+
+model Category {
+  id             String        @id @default(uuid()) @db.Uuid
+  name           String
+  type           CategoryType
+  description    String?
+  color          String?
+  organizationId String        @map("organization_id") @db.Uuid
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  recurringTransactions RecurringTransaction[]
+
+  @@index([organizationId])
+  @@map("categories")
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+// Invoice Model
+
+model Invoice {
+  id               String        @id @default(uuid()) @db.Uuid
+  invoiceNumber    String        @map("invoice_number")
+  publicId         String        @unique @default(uuid()) @map("public_id")
+  clientId         String        @map("client_id") @db.Uuid
+  issueDate        DateTime      @map("issue_date")
+  dueDate          DateTime      @map("due_date")
+  subtotal         Decimal       @db.Decimal(20, 4)
+  tax              Decimal       @default(0) @db.Decimal(20, 4)
+  shipping         Decimal       @default(0) @db.Decimal(20, 4)
+  shippingTaxRate  Decimal       @default(0) @map("shipping_tax_rate") @db.Decimal(10, 4)
+  discount         Decimal       @default(0) @db.Decimal(20, 4)
+  total            Decimal       @db.Decimal(20, 4)
+  originalCurrency String        @default("INR") @map("original_currency")
+  exchangeRate     Decimal       @default(1) @map("exchange_rate") @db.Decimal(20, 8)
+  baseTotal        Decimal       @db.Decimal(20, 4) @map("base_total")
+  status           InvoiceStatus @default(DRAFT)
+  notes            String?
+  terms            String?
+  templateId       String?       @map("template_id") @db.Uuid
+  paymentMethodId  String?       @map("payment_method_id") @db.Uuid
+  metadata         Json?
+  organizationId   String        @map("organization_id") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  client           Client            @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  template         InvoiceTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  paymentMethod    OrganizationPaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  items            InvoiceItem[]
+  payments         Payment[]
+  customFieldValues CustomFieldValue[]
+  deliveryNotes    DeliveryNote[]
+  quote            Quote?   @relation("QuoteInvoice")
+  reminders        PaymentReminder[]
+
+  @@unique([organizationId, invoiceNumber])
+  @@index([organizationId])
+  @@index([publicId])
+  @@index([clientId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+  UNPAID
+}
+
+model InvoiceItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  invoiceId   String  @map("invoice_id") @db.Uuid
+  productId   String? @map("product_id") @db.Uuid
+  description String
+  quantity    Decimal @db.Decimal(20, 4)
+  unitPrice   Decimal @map("unit_price") @db.Decimal(20, 4)
+  amount      Decimal @db.Decimal(20, 4)
+  taxRate     Decimal @default(0) @map("tax_rate") @db.Decimal(10, 4)
+  taxAmount   Decimal @default(0) @map("tax_amount") @db.Decimal(20, 4)
+  sortOrder   Int     @default(0) @map("sort_order")
+  metadata    Json?
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([invoiceId])
+  @@index([productId])
+  @@map("invoice_items")
+}
+
+// Payment Model
+
+model Payment {
+  id                     String         @id @default(uuid()) @db.Uuid
+  invoiceId              String         @map("invoice_id") @db.Uuid
+  originalAmount         Decimal        @map("original_amount") @db.Decimal(20, 4)
+  originalCurrency       String         @default("INR") @map("original_currency")
+  exchangeRate           Decimal        @default(1) @map("exchange_rate") @db.Decimal(20, 8)
+  baseAmount             Decimal        @map("base_amount") @db.Decimal(20, 4)
+  convertedCurrency      String?        @map("converted_currency")
+  provider               PaymentProvider
+  paymentMethod          PaymentMethod  @map("payment_method")
+  providerTransactionId  String?        @map("provider_transaction_id")
+  internalTransactionId  String?        @unique @map("internal_transaction_id")
+  referenceNumber        String?        @map("reference_number")
+  status                 PaymentStatus  @default(PENDING)
+  paymentDate            DateTime       @map("payment_date")
+  receiptImageUrl        String?        @map("receipt_image_url")
+  barcodeImageUrl        String?        @map("barcode_image_url")
+  qrCodeImageUrl         String?        @map("qr_code_image_url")
+  notes                  String?
+  metadata               Json?
+  organizationId         String         @map("organization_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoice        Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customFieldValues CustomFieldValue[]
+
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@index([providerTransactionId])
+  @@index([status])
+  @@map("payments")
+}
+
+enum PaymentProvider {
+  STRIPE
+  RAZORPAY
+  PAYPAL
+  WISE
+  SKYDO
+  BANK_TRANSFER
+  SWIFT
+  ACH
+  UPI
+  MANUAL
+  OTHER
+}
+
+enum PaymentMethod {
+  CARD
+  ACH
+  SWIFT
+  NET_BANKING
+  UPI
+  WIRE
+  CASH
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+// Transaction Model
+
+model Transaction {
+  id               String          @id @default(uuid()) @db.Uuid
+  type             TransactionType
+  description      String
+  originalAmount   Decimal         @map("original_amount") @db.Decimal(20, 4)
+  originalCurrency String          @default("INR") @map("original_currency")
+  exchangeRate     Decimal         @default(1) @map("exchange_rate") @db.Decimal(20, 8)
+  baseAmount       Decimal         @map("base_amount") @db.Decimal(20, 4)
+  taxAmount        Decimal         @default(0) @map("tax_amount") @db.Decimal(20, 4)
+  convertedCurrency String?        @map("converted_currency")
+  date             DateTime
+  categoryId       String?         @map("category_id") @db.Uuid
+  notes            String?
+  metadata         Json?
+  organizationId   String          @map("organization_id") @db.Uuid
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  category         Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customFieldValues CustomFieldValue[]
+
+  @@index([organizationId])
+  @@index([type])
+  @@index([date])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+// Custom Fields Model
+
+model CustomField {
+  id             String          @id @default(uuid()) @db.Uuid
+  name           String
+  label          String
+  fieldType      CustomFieldType @map("field_type")
+  entityType     EntityType      @map("entity_type")
+  required       Boolean         @default(false)
+  defaultValue   String?         @map("default_value")
+  options        Json?
+  sortOrder      Int             @default(0) @map("sort_order")
+  organizationId String          @map("organization_id") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  values       CustomFieldValue[]
+
+  @@unique([organizationId, entityType, name])
+  @@index([organizationId])
+  @@map("custom_fields")
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  SELECT
+  MULTI_SELECT
+  URL
+  EMAIL
+  PHONE
+  TEXTAREA
+  JSON
+}
+
+enum EntityType {
+  CLIENT
+  INVOICE
+  PAYMENT
+  TRANSACTION
+}
+
+model CustomFieldValue {
+  id            String  @id @default(uuid()) @db.Uuid
+  customFieldId String  @map("custom_field_id") @db.Uuid
+  value         String
+  clientId      String? @map("client_id") @db.Uuid
+  invoiceId     String? @map("invoice_id") @db.Uuid
+  paymentId     String? @map("payment_id") @db.Uuid
+  transactionId String? @map("transaction_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  customField CustomField  @relation(fields: [customFieldId], references: [id], onDelete: Cascade)
+  client      Client?      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  invoice     Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  payment     Payment?     @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([customFieldId])
+  @@index([clientId])
+  @@index([invoiceId])
+  @@index([paymentId])
+  @@index([transactionId])
+  @@map("custom_field_values")
+}
+
+// ─── INVOICE TEMPLATE ───────────────────────────────────────────────────────
+
+model InvoiceTemplate {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  description    String?
+  layout         Json
+  styles         Json?
+  isDefault      Boolean  @default(false) @map("is_default")
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices     Invoice[]
+
+  @@index([organizationId])
+  @@map("invoice_templates")
+}
+
+// ─── SETTINGS ───────────────────────────────────────────────────────────────
+
+model Setting {
+  id             String   @id @default(uuid()) @db.Uuid
+  key            String
+  value          String
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@index([organizationId])
+  @@map("settings")
+}
+
+model OrganizationPaymentMethod {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String   // Display name e.g., "Bank Transfer USD"
+  type           String   // BANK_TRANSFER, UPI, PAYPAL, ETC
+  details        Json     // Structured details based on type
+  isDefault      Boolean  @default(false) @map("is_default")
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices     Invoice[]
+
+  @@index([organizationId])
+  @@map("organization_payment_methods")
+}
+
+// ─── AUDIT LOG ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  action         String
+  entityType     String   @map("entity_type")
+  entityId       String   @map("entity_id")
+  userId         String?  @map("user_id") @db.Uuid
+  oldData        Json?    @map("old_data")
+  newData        Json?    @map("new_data")
+  ipAddress      String?  @map("ip_address")
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user         User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([entityType, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// ─── DELIVERY NOTE ──────────────────────────────────────────────────────────
+
+model DeliveryNote {
+  id             String   @id @default(uuid()) @db.Uuid
+  deliveryNumber String   @map("delivery_number")
+  invoiceId      String?  @map("invoice_id") @db.Uuid
+  clientId       String   @map("client_id") @db.Uuid
+  issueDate      DateTime @map("issue_date")
+  status         String   @default("DRAFT") // DRAFT, DELIVERED, RETURNED
+  metadata       Json?
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  invoice      Invoice?           @relation(fields: [invoiceId], references: [id])
+  client       Client             @relation(fields: [clientId], references: [id])
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items        DeliveryNoteItem[]
+
+  @@index([organizationId])
+  @@index([clientId])
+  @@map("delivery_notes")
+}
+
+model DeliveryNoteItem {
+  id             String  @id @default(uuid()) @db.Uuid
+  deliveryNoteId String  @map("delivery_note_id") @db.Uuid
+  description    String
+  quantity       Decimal @db.Decimal(20, 4)
+  metadata       Json?
+
+  deliveryNote DeliveryNote @relation(fields: [deliveryNoteId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryNoteId])
+  @@map("delivery_note_items")
+}
+
+// ─── RECURRING TRANSACTION ──────────────────────────────────────────────────
+
+model RecurringTransaction {
+  id             String   @id @default(uuid()) @db.Uuid
+  description    String
+  amount         Decimal  @db.Decimal(20, 4)
+  type           String // INCOME, EXPENSE
+  frequency      String // DAILY, WEEKLY, MONTHLY, YEARLY
+  startDate      DateTime @map("start_date")
+  nextRunDate    DateTime @map("next_run_date")
+  endDate        DateTime? @map("end_date")
+  active         Boolean  @default(true)
+  metadata       Json?
+  organizationId String   @map("organization_id") @db.Uuid
+  categoryId     String?  @map("category_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category?    @relation(fields: [categoryId], references: [id])
+
+  @@index([organizationId])
+  @@map("recurring_transactions")
+}
+
+// ─── NOTIFICATIONS ──────────────────────────────────────────────────────────
+
+model Notification {
+  id             String   @id @default(uuid()) @db.Uuid
+  type           String   // INVITATION, SYSTEM, TEAM, CHAT, INVOICE, PAYMENT
+  title          String
+  message        String
+  isRead         Boolean  @default(false) @map("is_read")
+  recipientId    String   @map("recipient_id") @db.Uuid
+  senderId       String?  @map("sender_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  entityType     String?  @map("entity_type") // INVITATION, INVOICE, PAYMENT, etc.
+  entityId       String?  @map("entity_id")
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  recipient    User          @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  sender       User?         @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId])
+  @@index([organizationId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+// ─── CHAT ───────────────────────────────────────────────────────────────────
+
+model ChatRoom {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String?  // null for DM, name for group/team chat
+  type           String   @default("DIRECT") // DIRECT, GROUP, TEAM
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      ChatRoomMember[]
+  messages     ChatMessage[]
+
+  @@index([organizationId])
+  @@map("chat_rooms")
+}
+
+model ChatRoomMember {
+  id         String   @id @default(uuid()) @db.Uuid
+  chatRoomId String   @map("chat_room_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  role       String   @default("MEMBER") // ADMIN, MEMBER
+  joinedAt   DateTime @default(now()) @map("joined_at")
+
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatRoomId, userId])
+  @@index([chatRoomId])
+  @@index([userId])
+  @@map("chat_room_members")
+}
+
+model ChatMessage {
+  id         String    @id @default(uuid()) @db.Uuid
+  chatRoomId String    @map("chat_room_id") @db.Uuid
+  senderId   String    @map("sender_id") @db.Uuid
+  content    String
+  isDeleted  Boolean   @default(false) @map("is_deleted")
+  deletedForUsers String[] @default([]) @map("deleted_for_users") // user IDs who deleted this message from their view
+  metadata   Json?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  chatRoom ChatRoom @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  sender   User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([chatRoomId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+// ─── PRODUCTS / ITEMS ───────────────────────────────────────────────────────
+
+model Product {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  description    String?
+  sku            String?
+  unitPrice      Decimal  @map("unit_price") @db.Decimal(20, 4)
+  currency       String   @default("INR")
+  taxRate        Decimal  @default(0) @map("tax_rate") @db.Decimal(10, 4)
+  unit           String   @default("unit") // unit, hour, kg, piece, etc.
+  type           String   @default("SERVICE") // SERVICE, PRODUCT
+  image          String?
+  isActive       Boolean  @default(true) @map("is_active")
+  metadata       Json?
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceItems InvoiceItem[]
+  quoteItems   QuoteItem[]
+
+  @@index([organizationId])
+  @@index([sku])
+  @@map("products")
+}
+
+// ─── QUOTES / ESTIMATES ─────────────────────────────────────────────────────
+
+model Quote {
+  id               String      @id @default(uuid()) @db.Uuid
+  quoteNumber      String      @map("quote_number")
+  publicId         String      @unique @default(uuid()) @map("public_id")
+  clientId         String      @map("client_id") @db.Uuid
+  createdById      String      @map("created_by_id") @db.Uuid
+  issueDate        DateTime    @map("issue_date")
+  expiryDate       DateTime    @map("expiry_date")
+  subtotal         Decimal     @db.Decimal(20, 4)
+  tax              Decimal     @default(0) @db.Decimal(20, 4)
+  shipping         Decimal     @default(0) @db.Decimal(20, 4)
+  discount         Decimal     @default(0) @db.Decimal(20, 4)
+  total            Decimal     @db.Decimal(20, 4)
+  originalCurrency String      @default("INR") @map("original_currency")
+  exchangeRate     Decimal     @default(1) @map("exchange_rate") @db.Decimal(20, 8)
+  baseTotal        Decimal     @db.Decimal(20, 4) @map("base_total")
+  status           QuoteStatus @default(DRAFT)
+  notes            String?
+  terms            String?
+  convertedInvoiceId String?   @unique @map("converted_invoice_id") @db.Uuid
+  metadata         Json?
+  organizationId   String      @map("organization_id") @db.Uuid
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  client           Client       @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdBy        User         @relation("QuoteCreator", fields: [createdById], references: [id])
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  convertedInvoice Invoice?     @relation("QuoteInvoice", fields: [convertedInvoiceId], references: [id], onDelete: SetNull)
+  items            QuoteItem[]
+
+  @@unique([organizationId, quoteNumber])
+  @@index([organizationId])
+  @@index([clientId])
+  @@index([status])
+  @@map("quotes")
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+  EXPIRED
+  CONVERTED
+}
+
+model QuoteItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  quoteId     String  @map("quote_id") @db.Uuid
+  productId   String? @map("product_id") @db.Uuid
+  description String
+  quantity    Decimal @db.Decimal(20, 4)
+  unitPrice   Decimal @map("unit_price") @db.Decimal(20, 4)
+  amount      Decimal @db.Decimal(20, 4)
+  taxRate     Decimal @default(0) @map("tax_rate") @db.Decimal(10, 4)
+  taxAmount   Decimal @default(0) @map("tax_amount") @db.Decimal(20, 4)
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  quote   Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([quoteId])
+  @@map("quote_items")
+}
+
+// ─── PROJECTS & TIME TRACKING ───────────────────────────────────────────────
+
+model Project {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  description    String?
+  clientId       String?  @map("client_id") @db.Uuid
+  status         String   @default("ACTIVE") // ACTIVE, COMPLETED, ARCHIVED
+  hourlyRate     Decimal? @map("hourly_rate") @db.Decimal(20, 4)
+  budget         Decimal? @db.Decimal(20, 4)
+  currency       String   @default("INR")
+  metadata       Json?
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client       Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  timeEntries  TimeEntry[]
+
+  @@index([organizationId])
+  @@map("projects")
+}
+
+model TimeEntry {
+  id             String   @id @default(uuid()) @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  description    String?
+  date           DateTime
+  hours          Decimal  @db.Decimal(10, 2)
+  hourlyRate     Decimal? @map("hourly_rate") @db.Decimal(20, 4)
+  isBillable     Boolean  @default(true) @map("is_billable")
+  isBilled       Boolean  @default(false) @map("is_billed")
+  metadata       Json?
+  organizationId String   @map("organization_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([userId])
+  @@index([organizationId])
+  @@index([date])
+  @@map("time_entries")
+}
+
+// ─── PAYMENT REMINDERS ──────────────────────────────────────────────────────
+
+model PaymentReminder {
+  id           String   @id @default(uuid()) @db.Uuid
+  invoiceId    String   @map("invoice_id") @db.Uuid
+  scheduledAt  DateTime @map("scheduled_at")
+  sentAt       DateTime? @map("sent_at")
+  status       String   @default("PENDING") // PENDING, SENT, CANCELLED
+  message      String?
+  organizationId String @map("organization_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  invoice      Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([organizationId])
+  @@index([scheduledAt])
+  @@map("payment_reminders")
+}
