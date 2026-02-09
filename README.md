@@ -2,12 +2,13 @@
 
 # Open Book
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue.svg)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-15.0-black.svg)](https://nextjs.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.0-38B2AC.svg)](https://tailwindcss.com/)
-[![Prisma](https://img.shields.io/badge/Prisma-5.0-2D3748.svg)](https://www.prisma.io/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15.0-336791.svg)](https://www.postgresql.org/)
+[![License: MIT](https://img.shields.io/github/license/muhammad-fiaz/OpenBook?style=flat-square)](https://opensource.org/licenses/MIT)
+[![GitHub issues](https://img.shields.io/github/issues/muhammad-fiaz/OpenBook?style=flat-square)](https://github.com/muhammad-fiaz/OpenBook/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/muhammad-fiaz/OpenBook?style=flat-square)](https://github.com/muhammad-fiaz/OpenBook/pulls)
+[![GitHub contributors](https://img.shields.io/github/contributors/muhammad-fiaz/OpenBook?style=flat-square)](https://github.com/muhammad-fiaz/OpenBook/graphs/contributors)
+[![GitHub last commit](https://img.shields.io/github/last-commit/muhammad-fiaz/OpenBook?style=flat-square)](https://github.com/muhammad-fiaz/OpenBook/commits/main)
+[![GitHub stars](https://img.shields.io/github/stars/muhammad-fiaz/OpenBook?style=flat-square)](https://github.com/muhammad-fiaz/OpenBook/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/muhammad-fiaz/OpenBook?style=flat-square)](https://github.com/muhammad-fiaz/OpenBook/network/members)
 
 
 
