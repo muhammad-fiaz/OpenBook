@@ -32,7 +32,6 @@ Open Book is a self-hosted, personal accounting and finance application designed
   - [Production](#production)
   - [Contributing](#contributing)
   - [License](#license)
-  - [Contact](#contact)
 
 ## Features
 
@@ -156,6 +155,3 @@ Please refer to the [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on ho
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
-## Contact
-
-Project Repository: [https://github.com/muhammad-fiaz/OpenBook](https://github.com/muhammad-fiaz/OpenBook)
