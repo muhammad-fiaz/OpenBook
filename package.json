@@ -13,7 +13,7 @@
     "@base-ui/react": "^1.2.0",
     "@better-auth/prisma-adapter": "^1.5.0-beta.9",
     "@hookform/resolvers": "^5.2.2",
-    "@pdfme/common": "^5.5.8",
+    "@pdfme/common": "^5.5.10",
     "@pdfme/generator": "^5.5.8",
     "@pdfme/schemas": "^5.5.8",
     "@pdfme/ui": "^5.5.8",
