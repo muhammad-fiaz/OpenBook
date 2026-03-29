@@ -15,7 +15,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@pdfme/common": "^5.5.8",
     "@pdfme/generator": "^5.5.8",
-    "@pdfme/schemas": "^5.5.8",
+    "@pdfme/schemas": "^5.5.10",
     "@pdfme/ui": "^5.5.8",
     "@prisma/adapter-pg": "^7.4.0",
     "@prisma/client": "^7.4.0",
